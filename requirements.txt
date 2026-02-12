@@ -1,17 +1,4 @@
-# Transformers ecosystem
-transformers==4.40.2
-tokenizers==0.19.1
-accelerate==0.28.0
-bitsandbytes==0.43.1
-safetensors==0.7.0
-
-# HuggingFace
-huggingface_hub==0.36.2
-
-# App
 streamlit==1.54.0
-pandas==2.2.2
-numpy==1.24.4
-
-# Utilities
-tqdm==4.66.5
+torch==2.5.1
+transformers==4.40.2
+plotly
