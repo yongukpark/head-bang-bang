@@ -97,7 +97,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 @st.cache_resource
 def load_model():
-    model_name = "EleutherAI/pythia-410m"
+    model_name = "EleutherAI/pythia-1.4b"
     model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model.eval()
@@ -345,8 +345,13 @@ if run_button:
         </style>
         <div class="scroll-container">
         """
+        sorted_data = sorted(
+            impact_data,
+            key=lambda x: x["delta"],
+            reverse=False
+        )
 
-        for item in impact_data:
+        for item in sorted_data:
             d_class = "delta-neg" if item['delta'] < 0 else "delta-pos"
 
             html_content += f"""
