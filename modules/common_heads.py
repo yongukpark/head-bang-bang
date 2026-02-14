@@ -40,15 +40,3 @@ def keep_only_selected_heads(
     for head_idx in selected_head_indices:
         kept[:, :, head_idx, :] = heads[:, :, head_idx, :]
     return kept.view(bsz, seq_len, hidden_dim)
-
-
-def add_to_single_head(
-    hidden: torch.Tensor, head_idx: int, n_heads: int, value: float
-) -> torch.Tensor:
-    """Add a scalar offset to one attention head."""
-    bsz, seq_len, hidden_dim = hidden.shape
-    head_dim = hidden_dim // n_heads
-
-    heads = hidden.view(bsz, seq_len, n_heads, head_dim).clone()
-    heads[:, :, head_idx, :] += value
-    return heads.view(bsz, seq_len, hidden_dim)

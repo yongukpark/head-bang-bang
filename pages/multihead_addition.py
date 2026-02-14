@@ -10,7 +10,13 @@ from modules.common_inference import (
     summarize_prediction,
 )
 from modules.common_model import get_device, get_selected_model_name, load_model
-from modules.common_ui import apply_base_theme, render_title, render_token_card, render_top5_cards
+from modules.common_ui import (
+    apply_base_theme,
+    render_title,
+    render_token_card,
+    render_top5_cards,
+    render_top5_diff_cards,
+)
 
 # =============================
 # Page Config
@@ -34,6 +40,7 @@ head_labels = build_head_labels(n_layers, n_heads)
 selected_heads = st.multiselect("Select Heads to Keep", options=head_labels)
 selected_head_indices = parse_head_labels(selected_heads)
 selected_heads_map = heads_by_layer(selected_head_indices, n_layers)
+st.caption(f"Selected heads: {len(selected_head_indices)}")
 
 prompt_text = st.text_area(
     "Enter multiple prompts (one per line)",
@@ -91,23 +98,32 @@ if run:
             handle.remove()
 
         kept_only = summarize_prediction(tokenizer, modified_last, modified_probs)
+        top1_changed = kept_only.top1_id != baseline.top1_id
 
+        st.markdown("### 📊 Result")
         left, right = st.columns(2)
         with left:
-            render_token_card("Baseline Top-1", baseline.top1_token, f"{baseline.top1_prob:.2%}")
+            st.markdown("#### Baseline Top-1")
+            render_token_card("Token", baseline.top1_token, f"{baseline.top1_prob:.2%}")
 
         with right:
+            st.markdown("#### Baseline Top-5")
+            render_top5_cards(baseline.top5_tokens, baseline.top5_probs)
+
+        colb, cola = st.columns(2)
+        with colb:
+            st.markdown("#### Keep-Only Top-1")
             render_token_card(
-                "Keep-Only Top-1",
+                "Token",
                 kept_only.top1_token,
                 f"Δ {kept_only.top1_prob - baseline.top1_prob:+.2%}",
             )
 
-        colb, cola = st.columns(2)
-        with colb:
-            st.markdown("#### Baseline Top-5")
-            render_top5_cards(baseline.top5_tokens, baseline.top5_probs)
-
         with cola:
             st.markdown("#### Keep-Only Top-5")
-            render_top5_cards(kept_only.top5_tokens, kept_only.top5_probs)
+            render_top5_diff_cards(
+                kept_only.top5_tokens,
+                kept_only.top5_probs,
+                baseline.top5_tokens,
+                top1_changed,
+            )

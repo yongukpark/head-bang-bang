@@ -8,8 +8,17 @@ def apply_base_theme(top5_font_size: int = 18):
     st.markdown(
         f"""
 <style>
-header {{visibility: hidden;}}
+header {{visibility: visible;}}
 footer {{visibility: hidden;}}
+
+[data-testid="stHeader"] {{
+    background: #0f1117 !important;
+    border-bottom: 1px solid #2f3542;
+}}
+
+[data-testid="stToolbar"] button {{
+    color: #e6e6e6 !important;
+}}
 
 .stApp {{
     background: #0f1117;
@@ -45,6 +54,16 @@ h1 {{
     font-size: {top5_font_size}px;
     white-space: pre;
     min-height: 72px;
+}}
+
+.top5-card-changed {{
+    border: 1px solid #ff4d6d;
+    background: #321a1a;
+}}
+
+.top5-card-new {{
+    border: 1px solid #00f2aa;
+    background: #1a2e26;
 }}
 
 div[data-testid="stButton"] > button {{
@@ -111,6 +130,37 @@ def render_top5_cards(tokens: list[str], probs: list[float]):
             st.markdown(
                 f"""
                 <div class='top5-card'>
+                    {html.escape(visualize_token(tokens[i]))}<br>
+                    <span style='font-size:14px; color:#aaaaaa;'>{probs[i]:.2%}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+
+def render_top5_diff_cards(
+    tokens: list[str],
+    probs: list[float],
+    baseline_tokens: list[str],
+    top1_changed: bool,
+):
+    """Render Top-5 tokens and color-code changes vs baseline.
+
+    - Red: Top-1 token replaced baseline Top-1.
+    - Green: Token newly entered Top-5.
+    """
+    cols = st.columns(5)
+    for i, col in enumerate(cols):
+        with col:
+            status_class = ""
+            if top1_changed and i == 0:
+                status_class = "top5-card-changed"
+            elif tokens[i] not in baseline_tokens:
+                status_class = "top5-card-new"
+
+            st.markdown(
+                f"""
+                <div class='top5-card {status_class}'>
                     {html.escape(visualize_token(tokens[i]))}<br>
                     <span style='font-size:14px; color:#aaaaaa;'>{probs[i]:.2%}</span>
                 </div>
