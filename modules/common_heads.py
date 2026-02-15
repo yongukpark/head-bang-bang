@@ -40,3 +40,21 @@ def keep_only_selected_heads(
     for head_idx in selected_head_indices:
         kept[:, :, head_idx, :] = heads[:, :, head_idx, :]
     return kept.view(bsz, seq_len, hidden_dim)
+
+
+def replace_selected_heads_from_donor(
+    hidden: torch.Tensor,
+    donor_hidden: torch.Tensor,
+    selected_head_indices: Iterable[int],
+    n_heads: int,
+) -> torch.Tensor:
+    """Replace selected heads using donor prompt activations (overlapping prefix length)."""
+    bsz, seq_len, hidden_dim = hidden.shape
+    head_dim = hidden_dim // n_heads
+    patch_len = min(seq_len, donor_hidden.shape[1])
+
+    target_heads = hidden.view(bsz, seq_len, n_heads, head_dim).clone()
+    donor_heads = donor_hidden.view(1, donor_hidden.shape[1], n_heads, head_dim)
+    for head_idx in selected_head_indices:
+        target_heads[:, :patch_len, head_idx, :] = donor_heads[:, :patch_len, head_idx, :]
+    return target_heads.view(bsz, seq_len, hidden_dim)
