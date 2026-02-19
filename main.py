@@ -19,6 +19,11 @@ pg = st.navigation(
                 title="Multi-Head Resampling",
                 icon=":material/shuffle:",
             ),
+            st.Page(
+                "pages/head_mlp_logit_lens.py",
+                title="Head + MLP Logit Lens",
+                icon=":material/visibility:",
+            ),
         ],
         "Zero-ablation": [
             st.Page(
