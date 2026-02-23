@@ -3,7 +3,6 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 MODEL_OPTIONS = [
-    "EleutherAI/pythia-410m",
     "EleutherAI/pythia-1.4b",
 ]
 DEFAULT_MODEL_NAME = "EleutherAI/pythia-1.4b"

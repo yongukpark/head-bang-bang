@@ -125,7 +125,16 @@ def _build_probe_vectors(model, layer_input, layer_output, attn_add, mlp_add, at
     return probes
 
 
-def _run_lens(model, tokenizer, probes: list[dict], topk: int, apply_final_ln: bool, chunk_size: int) -> dict[str, dict]:
+def _run_lens(
+    model,
+    tokenizer,
+    probes: list[dict],
+    topk_display: int,
+    apply_final_ln: bool,
+    chunk_size: int,
+    target_token_id: int | None,
+    target_token_text: str | None,
+) -> dict[str, dict]:
     if not probes:
         return {}
     device = next(model.parameters()).device
@@ -134,6 +143,11 @@ def _run_lens(model, tokenizer, probes: list[dict], topk: int, apply_final_ln: b
     vectors = torch.stack([probe["vec"] for probe in probes], dim=0)
     out: dict[str, dict] = {}
 
+    vocab_size = model.config.vocab_size
+    topn_for_color = min(100, vocab_size)
+    topk_display = min(topk_display, vocab_size)
+    normalized_target = target_token_text.lstrip() if target_token_text is not None else None
+
     for start in range(0, vectors.size(0), chunk_size):
         end = min(start + chunk_size, vectors.size(0))
         batch = vectors[start:end].to(device).unsqueeze(1)
@@ -141,12 +155,23 @@ def _run_lens(model, tokenizer, probes: list[dict], topk: int, apply_final_ln: b
             if apply_final_ln:
                 batch = final_ln(batch)
             logits = lm_head(batch).squeeze(1)
-            top_vals, top_ids = torch.topk(logits, k=topk, dim=-1)
+            top_vals, top_ids = torch.topk(logits, k=topn_for_color, dim=-1)
 
         for i in range(end - start):
             probe = probes[start + i]
-            ids = top_ids[i].tolist()
-            vals = top_vals[i].tolist()
+            ids_100 = top_ids[i].tolist()
+            vals_100 = top_vals[i].tolist()
+            ids = ids_100[:topk_display]
+            vals = vals_100[:topk_display]
+            decoded_100 = [tokenizer.decode([tok]) for tok in ids_100]
+            target_rank_candidates: list[int] = []
+            if target_token_id is not None and target_token_id in ids_100:
+                target_rank_candidates.append(ids_100.index(target_token_id) + 1)
+            if normalized_target is not None:
+                for idx, decoded in enumerate(decoded_100):
+                    if decoded.lstrip() == normalized_target:
+                        target_rank_candidates.append(idx + 1)
+            target_rank = min(target_rank_candidates) if target_rank_candidates else None
             out[probe["id"]] = {
                 "id": probe["id"],
                 "title": probe["title"],
@@ -154,10 +179,11 @@ def _run_lens(model, tokenizer, probes: list[dict], topk: int, apply_final_ln: b
                 "kind": probe["kind"],
                 "norm": float(torch.linalg.norm(vectors[start + i]).item()),
                 "topk_ids": ids,
-                "topk_tokens": [visualize_token(tokenizer.decode([tok])) for tok in ids],
+                "topk_tokens": [visualize_token(tok) for tok in decoded_100[:topk_display]],
                 "topk_logits": vals,
-                "top1_token": visualize_token(tokenizer.decode([ids[0]])),
+                "top1_token": visualize_token(decoded_100[0]),
                 "top1_logit": vals[0],
+                "target_rank": target_rank,
             }
     return out
 
@@ -218,43 +244,37 @@ def _inject_css():
 def _build_layer_arch_figure(
     layer_idx: int,
     lens: dict[str, dict],
-    final_token_id: int,
+    target_label: str,
     n_heads: int,
-    show_head_direct: bool,
+    use_top5: bool,
+    use_top20: bool,
+    use_top100: bool,
 ):
     nodes = [
-        ("Residual In", f"L{layer_idx}.res_in", 0.0, 2.0, True),
-        ("QKV", None, 1.0, 3.0, False),
-        ("Score", None, 2.0, 3.0, False),
-        ("Softmax", None, 3.0, 3.0, False),
-        ("A*V", None, 4.0, 3.0, False),
-        ("W_O", None, 5.0, 3.0, False),
-        ("Attention Add", f"L{layer_idx}.attn_add", 4.0, 2.0, True),
-        ("Residual After Attn", f"L{layer_idx}.res_after_attn", 5.2, 2.0, True),
-        ("MLP Add", f"L{layer_idx}.mlp_add", 4.0, 1.0, True),
-        ("Residual Out", f"L{layer_idx}.res_out", 6.4, 2.0, True),
+        ("Residual In", f"L{layer_idx}.res_in", 0.0, 10.5, True),
+        ("Attention Add", f"L{layer_idx}.attn_add", 2.1, 7.8, True),
+        ("Residual After Attn", f"L{layer_idx}.res_after_attn", 0.0, 7.1, True),
+        ("MLP Add", f"L{layer_idx}.mlp_add", 2.1, 4.3, True),
+        ("Residual Out", f"L{layer_idx}.res_out", 0.0, 3.6, True),
     ]
 
     edge_pairs = [
-        (0, 6),  # res in -> attn add branch target
-        (6, 7),  # attn add -> post attn
-        (7, 9),  # post attn -> out
-        (7, 8),  # post attn -> mlp add
-        (8, 9),  # mlp add -> out
-        (1, 2),
-        (2, 3),
-        (3, 4),
-        (4, 5),
-        (5, 6),
+        (0, 2),  # residual backbone: res_in -> res_after_attn
+        (0, 1),  # residual stream enters attention branch
+        (1, 2),  # attention add merges into residual
+        (2, 4),  # residual backbone: res_after_attn -> res_out
+        (2, 3),  # residual stream enters mlp branch
+        (3, 4),  # mlp add merges into residual
     ]
 
-    if show_head_direct:
-        base_x = 1.0
-        span = 4.6
-        denom = max(n_heads - 1, 1)
-        for head_idx in range(n_heads):
-            hx = base_x + span * (head_idx / denom)
-            nodes.append((f"H{head_idx}", f"L{layer_idx}.H{head_idx}", hx, 0.2, True))
+    head_start_idx = len(nodes)
+    base_x = -2.4
+    span = 2.1
+    denom = max(n_heads - 1, 1)
+    for head_idx in range(n_heads):
+        hx = base_x + span * (head_idx / denom)
+        nodes.append((f"H{head_idx}", f"L{layer_idx}.H{head_idx}", hx, 8.2, True))
+        edge_pairs.append((head_start_idx + head_idx, 1))  # each head contributes to attention add
 
     fig = go.Figure()
 
@@ -291,14 +311,61 @@ def _build_layer_arch_figure(
         labels.append(title)
         customdata.append(probe_id if clickable else "")
         sizes.append(42 if clickable else 36)
-        if not clickable:
-            colors.append("#5d6c8e")
-            hover.append(f"{title}<br>decorative node")
+        row = lens.get(probe_id)
+        rank = row.get("target_rank") if row else None
+        if rank is not None and use_top5 and rank <= 5:
+            node_color = "#ff3b3b"
+        elif rank is not None and use_top20 and 6 <= rank <= 20:
+            node_color = "#3f7cff"
+        elif rank is not None and use_top100 and 21 <= rank <= 100:
+            node_color = "#00f2aa"
         else:
-            row = lens.get(probe_id)
-            hit = row is not None and final_token_id in row["topk_ids"]
-            colors.append("#00f2aa" if hit else "#39527d")
-            hover.append(f"{title}<br>click to inspect")
+            node_color = "#39527d"
+        colors.append(node_color)
+        if row is None:
+            hover.append(f"{title}<br>no lens data")
+        else:
+            selected_labels = []
+            if use_top5:
+                selected_labels.append("TOP-5")
+            if use_top20:
+                selected_labels.append("TOP-20")
+            if use_top100:
+                selected_labels.append("TOP-100")
+            cutoff_label = ", ".join(selected_labels) if selected_labels else "none"
+            if rank is None:
+                rank_text = "outside top-100"
+                bucket_text = "none"
+            elif rank <= 5:
+                rank_text = f"#{rank}"
+                bucket_text = "TOP-5 (RED)"
+            elif rank <= 20:
+                rank_text = f"#{rank}"
+                bucket_text = "TOP-20 (BLUE)"
+            else:
+                rank_text = f"#{rank}"
+                bucket_text = "TOP-100 (GREEN)"
+            if row["id"].endswith(".res_after_attn"):
+                combine_hint = "combine: Residual In + Attention Add"
+            elif row["id"].endswith(".res_out"):
+                combine_hint = "combine: Residual After Attn + MLP Add"
+            else:
+                combine_hint = "branch contribution"
+            topk_rows = "<br>".join(
+                f"{i+1}. {html.escape(row['topk_tokens'][i])} ({row['topk_logits'][i]:.2f})"
+                for i in range(len(row["topk_tokens"]))
+            )
+            hover.append(
+                f"{html.escape(row['id'])}"
+                f"<br>{combine_hint}"
+                f"<br>top1: {html.escape(row['top1_token'])} ({row['top1_logit']:.2f})"
+                f"<br>||v||={row['norm']:.3f}"
+                f"<br>target: {html.escape(target_label)}"
+                f"<br>target rank: {rank_text}"
+                f"<br>selected cutoff: {cutoff_label}"
+                f"<br>bucket: {bucket_text}"
+                f"<br>top-k:<br>{topk_rows}"
+            )
 
     fig.add_trace(
         go.Scatter(
@@ -323,10 +390,10 @@ def _build_layer_arch_figure(
         template="plotly_dark",
         plot_bgcolor="#0f1117",
         paper_bgcolor="#0f1117",
-        height=310 if show_head_direct else 260,
+        height=520,
         margin=dict(l=10, r=10, t=8, b=8),
-        xaxis=dict(visible=False, range=[-0.5, 7.0]),
-        yaxis=dict(visible=False, range=[-0.4, 3.5]),
+        xaxis=dict(visible=False, range=[-2.8, 2.8]),
+        yaxis=dict(visible=False, range=[2.8, 11.2]),
     )
     return fig
 
@@ -336,14 +403,13 @@ def _is_cuda_runtime_issue(exc: RuntimeError) -> bool:
     return "CUDA" in msg or "CUBLAS_STATUS_NOT_INITIALIZED" in msg or "OUT OF MEMORY" in msg
 
 
-def _compute_all(model, tokenizer, prompt_text, device, topk, apply_final_ln, chunk_size):
+def _compute_all(model, tokenizer, prompt_text, device):
     input_ids = encode_prompt(tokenizer, prompt_text, device)
     layer_input, layer_output, attn_add, mlp_add, attn_pre_dense = _capture_states(model, input_ids)
     probes = _build_probe_vectors(model, layer_input, layer_output, attn_add, mlp_add, attn_pre_dense)
-    lens = _run_lens(model, tokenizer, probes, topk, apply_final_ln, chunk_size)
     final_logits, final_probs = forward_last_token(model, input_ids)
     final_summary = summarize_prediction(tokenizer, final_logits, final_probs)
-    return probes, lens, final_summary, input_ids
+    return probes, final_summary, input_ids
 
 
 def _render_arch_node(row: dict, is_hit: bool):
@@ -364,24 +430,10 @@ st.set_page_config(page_title="Head + MLP Logit Lens", layout="wide")
 apply_base_theme(top5_font_size=16)
 _inject_css()
 
-if "head_mlp_force_cpu" not in st.session_state:
-    st.session_state["head_mlp_force_cpu"] = False
-if "head_mlp_force_cpu_pending" not in st.session_state:
-    st.session_state["head_mlp_force_cpu_pending"] = False
-if "head_mlp_selected_probe" not in st.session_state:
-    st.session_state["head_mlp_selected_probe"] = None
 if "head_mlp_cache" not in st.session_state:
     st.session_state["head_mlp_cache"] = None
 
-# Defer force_cpu widget value changes to before widget instantiation.
-if st.session_state["head_mlp_force_cpu_pending"]:
-    st.session_state["head_mlp_force_cpu"] = True
-    st.session_state["head_mlp_force_cpu_pending"] = False
-
-force_cpu = st.sidebar.checkbox("Force CPU (Head+MLP Lens)", key="head_mlp_force_cpu")
-show_head_direct = st.sidebar.checkbox("Show head probes", value=True)
-
-device = torch.device("cpu") if force_cpu else get_device()
+device = get_device()
 selected_model_name = get_selected_model_name()
 model, tokenizer = load_model(selected_model_name, str(device))
 n_layers = model.config.num_hidden_layers
@@ -390,13 +442,16 @@ n_heads = model.config.num_attention_heads
 render_title("🔬 Head + MLP Architecture Logit Lens")
 
 prompt = st.text_area("Prompt", "The capital city of France is", height=120)
-cols = st.columns(3)
-with cols[0]:
-    topk = int(st.slider("Top-k", min_value=1, max_value=10, value=5, step=1))
-with cols[1]:
-    apply_final_ln = st.checkbox("Apply final layer norm before LM head", value=True)
-with cols[2]:
-    chunk_size = int(st.selectbox("Chunk size", options=[32, 64, 96, 128], index=1))
+chunk_size = 64
+topk_display = 5
+apply_final_ln = True
+cutoff_cols = st.columns(3)
+with cutoff_cols[0]:
+    use_top5 = st.checkbox("Top 5", value=True)
+with cutoff_cols[1]:
+    use_top20 = st.checkbox("Top 20", value=True)
+with cutoff_cols[2]:
+    use_top100 = st.checkbox("Top 100", value=True)
 
 run = st.button("🚀 Analyze Architecture")
 
@@ -409,56 +464,66 @@ if run:
         used_device = device
         used_model = model
         used_tokenizer = tokenizer
-        probes, lens, final_summary, input_ids = _compute_all(
+        probes, final_summary, input_ids = _compute_all(
             model=model,
             tokenizer=tokenizer,
             prompt_text=clean_prompt,
             device=device,
-            topk=topk,
-            apply_final_ln=apply_final_ln,
-            chunk_size=chunk_size,
         )
     except RuntimeError as exc:
         if device.type == "cuda" and _is_cuda_runtime_issue(exc):
             torch.cuda.empty_cache()
             used_device = torch.device("cpu")
             used_model, used_tokenizer = load_model(selected_model_name, "cpu")
-            st.session_state["head_mlp_force_cpu_pending"] = True
             st.warning("CUDA 실패로 CPU 재시도했습니다.")
-            probes, lens, final_summary, input_ids = _compute_all(
+            probes, final_summary, input_ids = _compute_all(
                 model=used_model,
                 tokenizer=used_tokenizer,
                 prompt_text=clean_prompt,
                 device=used_device,
-                topk=topk,
-                apply_final_ln=apply_final_ln,
-                chunk_size=chunk_size,
             )
         else:
             raise
 
+    target_token_id = final_summary.top1_id
+    target_label = visualize_token(final_summary.top1_token)
+
+    lens = _run_lens(
+        used_model,
+        used_tokenizer,
+        probes,
+        topk_display,
+        apply_final_ln,
+        chunk_size,
+        target_token_id,
+        final_summary.top1_token,
+    )
+
     st.session_state["head_mlp_cache"] = {
+        "prompt": clean_prompt,
         "probes": probes,
         "lens": lens,
         "final_summary": final_summary,
+        "target_token_id": target_token_id,
+        "target_label": target_label,
         "input_len": int(input_ids.shape[-1]),
         "device": str(used_device),
         "model_name": selected_model_name,
         "n_layers": n_layers,
         "n_heads": n_heads,
     }
-    st.session_state["head_mlp_selected_probe"] = "L0.res_in"
 
 cache = st.session_state.get("head_mlp_cache")
 if cache:
     lens: dict[str, dict] = cache["lens"]
     final_summary = cache["final_summary"]
-    final_token_id = final_summary.top1_id
+    target_label = cache.get("target_label", visualize_token(final_summary.top1_token))
 
     st.caption(f"Model: {cache['model_name']}")
     st.caption(f"Device used: {cache['device']}")
     st.caption(f"Prompt length: {cache['input_len']} tokens")
-    st.caption("아키텍처 박스의 불(ON)은 해당 지점 top-k에 최종 출력 토큰이 포함된다는 뜻입니다.")
+    st.caption("색상 기준: Top 5 빨강 / Top 6~20 파랑 / Top 21~100 초록 (체크한 구간만 표시)")
+    st.caption(f"Target: {target_label}")
 
     st.markdown("### Final Output")
     a, b = st.columns(2)
@@ -474,52 +539,22 @@ if cache:
         )
 
     st.markdown("### Transformer Architecture View")
-    st.caption("노드를 클릭하면 해당 위치의 logit lens 결과가 아래에 표시됩니다. 초록색은 final token이 top-k에 포함된 노드입니다.")
+    st.caption("세로 backbone이 residual 흐름입니다. Attention Add, MLP Add가 backbone으로 합쳐지는 구조로 표시됩니다.")
+    st.caption("노드 hover 시 상세를 확인할 수 있고, 색상 기준은 선택한 Top cutoff(5/20/100)입니다.")
     for layer_idx in range(cache["n_layers"]):
-        with st.expander(f"Layer {layer_idx}", expanded=layer_idx < 2):
-            fig = _build_layer_arch_figure(
-                layer_idx=layer_idx,
-                lens=lens,
-                final_token_id=final_token_id,
-                n_heads=cache["n_heads"],
-                show_head_direct=show_head_direct,
-            )
-            event = st.plotly_chart(
-                fig,
-                use_container_width=True,
-                key=f"arch_fig_{layer_idx}",
-                on_select="rerun",
-                selection_mode="points",
-                config={"displayModeBar": False},
-            )
-            if event and event.get("selection") and event["selection"].get("points"):
-                point = event["selection"]["points"][0]
-                if point.get("customdata"):
-                    st.session_state["head_mlp_selected_probe"] = point["customdata"]
-
-    selected_probe = st.session_state.get("head_mlp_selected_probe")
-    if selected_probe and selected_probe in lens:
-        row = lens[selected_probe]
-        is_hit = final_token_id in row["topk_ids"]
-        st.markdown("### Probe Result")
-        st.markdown(
-            f"<div class='probe-card'><b>{html.escape(row['id'])}</b><div class='probe-top1'>{html.escape(row['top1_token'])}</div>"
-            f"<div class='probe-sub'>top1 logit: {row['top1_logit']:.3f} | ||v||={row['norm']:.3f}</div></div>",
-            unsafe_allow_html=True,
+        st.markdown(f"#### Layer {layer_idx}")
+        fig = _build_layer_arch_figure(
+            layer_idx=layer_idx,
+            lens=lens,
+            target_label=target_label,
+            n_heads=cache["n_heads"],
+            use_top5=use_top5,
+            use_top20=use_top20,
+            use_top100=use_top100,
         )
-        if is_hit:
-            st.success("최종 출력 토큰이 이 지점의 top-k에 포함됩니다.")
-        else:
-            st.warning("최종 출력 토큰이 이 지점의 top-k에 포함되지 않습니다.")
-
-        token_cols = st.columns(len(row["topk_tokens"]))
-        for i, col in enumerate(token_cols):
-            tok = row["topk_tokens"][i]
-            logit = row["topk_logits"][i]
-            tok_id = row["topk_ids"][i]
-            css_class = "token-hit" if tok_id == final_token_id else "token-nohit"
-            with col:
-                st.markdown(
-                    f"<div class='top5-card {css_class}'>{html.escape(tok)}<br><span style='font-size:13px;color:#aab6d4'>{logit:.2f}</span></div>",
-                    unsafe_allow_html=True,
-                )
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            key=f"arch_fig_{layer_idx}",
+            config={"displayModeBar": False},
+        )

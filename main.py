@@ -2,6 +2,7 @@ import streamlit as st
 
 from modules.common_ui import apply_base_theme, render_title
 
+
 st.set_page_config(page_title="Head Bang Bang Launcher", layout="wide")
 apply_base_theme()
 
@@ -9,41 +10,61 @@ pg = st.navigation(
     {
         "Current": [
             st.Page(
-                "pages/avo_patching.py",
-                title="A*V*W_O Patching",
-                icon=":material/polyline:",
+                "pages/home_guide.py",
+                title="Usage Guide",
+                icon=":material/home:",
                 default=True,
             ),
             st.Page(
-                "pages/multihead_resampling.py",
-                title="Multi-Head Resampling",
-                icon=":material/shuffle:",
+                "pages/avo_patching.py",
+                title="Head Intervention Lab",
+                icon=":material/polyline:",
+            ),
+            st.Page(
+                "pages/prompt_repository.py",
+                title="Prompt Repository",
+                icon=":material/bookmarks:",
+            ),
+            st.Page(
+                "pages/stable_head_mining.py",
+                title="Stable Head Mining",
+                icon=":material/query_stats:",
             ),
             st.Page(
                 "pages/head_mlp_logit_lens.py",
-                title="Head + MLP Logit Lens",
+                title="Architecture Lens Explorer",
                 icon=":material/visibility:",
+            ),
+            st.Page(
+                "pages/multihead_resampling.py",
+                title="Multi-Head Transfer Lab",
+                icon=":material/shuffle:",
+            ),
+            st.Page(
+                "pages/head_note_board.py",
+                title="Head Knowledge Base",
+                icon=":material/dashboard:",
             ),
         ],
         "Zero-ablation": [
             st.Page(
                 "legacy/zero_ablation.py",
-                title="Visualizing Head Impact Map (Zero Ablation)",
+                title="Head Impact Map (Legacy)",
                 icon=":material/history:",
             ),
             st.Page(
                 "legacy/multihead_abulation.py",
-                title="Multi-Head Deactivation",
+                title="Multi-Head Deactivation (Legacy)",
                 icon=":material/block:",
             ),
             st.Page(
                 "legacy/multihead_addition.py",
-                title="Multi-Head Activate-Only",
+                title="Multi-Head Activate-Only (Legacy)",
                 icon=":material/bolt:",
             ),
             st.Page(
                 "legacy/multiprompt.py",
-                title="Multi-Prompt Heatmap",
+                title="Multi-Prompt Heatmap (Legacy)",
                 icon=":material/grid_view:",
             ),
         ],
