@@ -36,6 +36,16 @@ pg = st.navigation(
                 icon=":material/visibility:",
             ),
             st.Page(
+                "pages/multi_prompt_head_logit_lens.py",
+                title="Multi-Prompt Head Lens",
+                icon=":material/view_list:",
+            ),
+            st.Page(
+                "pages/multi_prompt_numeric_head_lens.py",
+                title="Numeric Subset Head Lens",
+                icon=":material/pin:",
+            ),
+            st.Page(
                 "pages/multihead_resampling.py",
                 title="Multi-Head Transfer Lab",
                 icon=":material/shuffle:",
