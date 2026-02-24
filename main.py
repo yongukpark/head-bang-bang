@@ -24,7 +24,7 @@ pg = st.navigation(
                 "pages/prompt_repository.py",
                 title="Prompt Repository",
                 icon=":material/bookmarks:",
-            ),
+            ),  
             st.Page(
                 "pages/stable_head_mining.py",
                 title="Stable Head Mining",

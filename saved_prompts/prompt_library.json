@@ -29,6 +29,89 @@
         "What is the capital of Italy? Answer:"
       ],
       "updated_at_utc": "2026-02-23T07:35:17.061321+00:00"
+    },
+    {
+      "name": "capital_2",
+      "description": "수도 테스트의 일관성을 위해 다른 프롬프트로 동일한 답 유도",
+      "prompts": [
+        "The capital of France is",
+        "The capital of Germany is",
+        "The capital of Korea is",
+        "The capital of Japan is",
+        "The capital of United State is",
+        "The capital of Canada is",
+        "The capital of Italy is"
+      ],
+      "updated_at_utc": "2026-02-24T03:02:22.310192+00:00"
+    },
+    {
+      "name": "addition",
+      "description": "더하기",
+      "prompts": [
+        "Cal: 3+14=",
+        "Cal: 7+22=",
+        "Cal: 9+30=",
+        "Cal: 12+18=",
+        "Cal: 15+24=",
+        "Cal: 17+31=",
+        "Cal: 19+40=",
+        "Cal: 21+36=",
+        "Cal: 23+45=",
+        "Cal: 25+33=",
+        "Cal: 27+41=",
+        "Cal: 90+8=",
+        "Cal: 9+6=",
+        "Cal: 94+5=",
+        "Cal: 96+2=",
+        "Cal: 10+10=",
+        "Cal: 13+26=",
+        "Cal: 17+22=",
+        "Cal: 19+2=",
+        "Cal: 21+24=",
+        "Cal: 2+3=",
+        "Cal: 25+18=",
+        "Cal: 2+21=",
+        "Cal: 29+34=",
+        "Cal: 31+7="
+      ],
+      "updated_at_utc": "2026-02-24T04:00:05.960344+00:00"
+    },
+    {
+      "name": "addition_2",
+      "description": "더하기 2",
+      "prompts": [
+        "Cal: 22+18=",
+        "Cal: 32+18=",
+        "Cal: 42+18=",
+        "Cal: 52+18=",
+        "Cal: 62+18=",
+        "Cal: 72+18=",
+        "Cal: 82+18=",
+        "Cal: 13+28=",
+        "Cal: 24+38=",
+        "Cal: 35+48=",
+        "Cal: 12+16=",
+        "Cal: 12+15=",
+        "Cal: 12+14=",
+        "Cal: 13+16=",
+        "Cal: 14+15=",
+        "Cal: 21+18=",
+        "Cal: 22+16=",
+        "Cal: 23+14=",
+        "Cal: 31+18=",
+        "Cal: 41+18=",
+        "Cal: 11+19=",
+        "Cal: 13+17=",
+        "Cal: 14+16=",
+        "Cal: 15+15=",
+        "Cal: 10+20=",
+        "Cal: 9+21=",
+        "Cal: 8+22=",
+        "Cal: 7+23=",
+        "Cal: 6+24=",
+        "Cal: 5+25="
+      ],
+      "updated_at_utc": "2026-02-24T05:08:24.842857+00:00"
     }
   ]
 }
