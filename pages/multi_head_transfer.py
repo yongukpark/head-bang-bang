@@ -1,5 +1,6 @@
 import streamlit as st
 
+from modules.common_app import build_page_title
 from modules.common_heads import replace_selected_heads_from_donor
 from modules.common_inference import (
     build_head_labels,
@@ -47,7 +48,7 @@ def _normalize_non_empty(items: list[str]) -> list[str]:
 # =============================
 # Page Config
 # =============================
-st.set_page_config(page_title="Interactive Multi-Head Resampling Lab", layout="wide")
+st.set_page_config(page_title=build_page_title("Multi-Head Transfer"), layout="wide")
 apply_base_theme()
 
 
@@ -60,7 +61,7 @@ model, tokenizer = load_model(selected_model_name, str(device))
 n_layers = model.config.num_hidden_layers
 n_heads = model.config.num_attention_heads
 
-render_title("🧠 Interactive Multi-Head Resampling Lab")
+render_title("🔁 Multi-Head Transfer")
 
 head_labels = build_head_labels(n_layers, n_heads)
 selected_heads = st.multiselect("Select Heads to Resample", options=head_labels)

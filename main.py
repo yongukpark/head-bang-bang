@@ -1,85 +1,54 @@
 import streamlit as st
 
+from modules.common_app import APP_NAME, build_page_title
 from modules.common_ui import apply_base_theme, render_title
 
 
-st.set_page_config(page_title="Head Bang Bang Launcher", layout="wide")
+st.set_page_config(page_title=build_page_title("Workspace"), layout="wide")
 apply_base_theme()
 
 pg = st.navigation(
     {
-        "Current": [
+        "Workspace": [
             st.Page(
-                "pages/home_guide.py",
-                title="Usage Guide",
+                "pages/overview.py",
+                title="Overview",
                 icon=":material/home:",
                 default=True,
             ),
             st.Page(
-                "pages/avo_patching.py",
-                title="Head Intervention Lab",
+                "pages/intervention_lab.py",
+                title="Intervention Lab",
                 icon=":material/polyline:",
             ),
             st.Page(
-                "pages/prompt_repository.py",
-                title="Prompt Repository",
+                "pages/prompt_sets.py",
+                title="Prompt Sets",
                 icon=":material/bookmarks:",
-            ),  
+            ),
             st.Page(
                 "pages/stable_head_mining.py",
                 title="Stable Head Mining",
                 icon=":material/query_stats:",
             ),
             st.Page(
-                "pages/head_mlp_logit_lens.py",
-                title="Architecture Lens Explorer",
+                "pages/architecture_lens.py",
+                title="Architecture Lens",
                 icon=":material/visibility:",
             ),
             st.Page(
-                "pages/multi_prompt_head_logit_lens.py",
-                title="Multi-Prompt Head Lens",
+                "pages/head_logit_lens.py",
+                title="Head Logit Lens",
                 icon=":material/view_list:",
             ),
             st.Page(
-                "pages/multi_prompt_numeric_head_lens.py",
-                title="Numeric Subset Head Lens",
-                icon=":material/pin:",
-            ),
-            st.Page(
-                "pages/multihead_resampling.py",
-                title="Multi-Head Transfer Lab",
+                "pages/multi_head_transfer.py",
+                title="Multi-Head Transfer",
                 icon=":material/shuffle:",
-            ),
-            st.Page(
-                "pages/head_note_board.py",
-                title="Head Knowledge Base",
-                icon=":material/dashboard:",
-            ),
-        ],
-        "Zero-ablation": [
-            st.Page(
-                "legacy/zero_ablation.py",
-                title="Head Impact Map (Legacy)",
-                icon=":material/history:",
-            ),
-            st.Page(
-                "legacy/multihead_abulation.py",
-                title="Multi-Head Deactivation (Legacy)",
-                icon=":material/block:",
-            ),
-            st.Page(
-                "legacy/multihead_addition.py",
-                title="Multi-Head Activate-Only (Legacy)",
-                icon=":material/bolt:",
-            ),
-            st.Page(
-                "legacy/multiprompt.py",
-                title="Multi-Prompt Heatmap (Legacy)",
-                icon=":material/grid_view:",
             ),
         ],
     }
 )
 
-render_title("🧠 Head Bang Bang")
+render_title(f"🧠 {APP_NAME}")
 pg.run()

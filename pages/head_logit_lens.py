@@ -3,6 +3,7 @@ from __future__ import annotations
 import streamlit as st
 import torch
 
+from modules.common_app import build_page_title
 from modules.common_inference import encode_prompt
 from modules.common_model import get_device, get_selected_model_name, load_model
 from modules.common_ui import apply_base_theme, render_title, visualize_token
@@ -67,9 +68,9 @@ def _run_head_lens(
     return top_tokens, top_vals.tolist(), top_probs.tolist()
 
 
-st.set_page_config(page_title="Multi-Prompt Head Logit Lens", layout="wide")
+st.set_page_config(page_title=build_page_title("Head Logit Lens"), layout="wide")
 apply_base_theme()
-render_title("🧪 Multi-Prompt Head Logit Lens")
+render_title("🧪 Head Logit Lens")
 
 selected_model_name = get_selected_model_name()
 device = get_device()
@@ -109,7 +110,7 @@ raw_prompts = st.text_area(
     placeholder="여기에 여러 프롬프트를 줄바꿈으로 입력하세요.",
 )
 
-if st.button("Run Multi-Prompt Head Lens", use_container_width=True):
+if st.button("Run Head Logit Lens", use_container_width=True):
     prompts = _parse_prompts(raw_prompts)
     if not prompts:
         st.warning("최소 1개 이상의 프롬프트를 입력해 주세요.")

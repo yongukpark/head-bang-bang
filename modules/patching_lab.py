@@ -7,7 +7,17 @@ import torch
 
 from modules.common_inference import encode_prompt, forward_last_token, summarize_prediction
 from modules.common_model import get_device, get_selected_model_name, load_model
-from modules.common_ui import apply_base_theme, render_title, visualize_token
+from modules.common_ui import (
+    BLUE_DEEP,
+    BORDER_COLOR,
+    GREEN_ACCENT,
+    PLOT_BACKGROUND,
+    SURFACE_PRIMARY,
+    TEXT_MUTED,
+    apply_base_theme,
+    render_title,
+    visualize_token,
+)
 
 
 MODE_META = {
@@ -36,10 +46,10 @@ MODE_META = {
         "help_line": "Each run replaces one head's A*V vector before W_O on full prefix.",
     },
     "avo": {
-        "title": "🧠 A*V*W_O Patching Lab",
-        "button": "🚀 Run A*V*W_O Patching",
-        "map_title": "### 🗺️ A*V*W_O Patching Impact Map",
-        "help_line": "Each run swaps one head's post-W_O contribution on full prefix.",
+        "title": "🧪 Intervention Lab",
+        "button": "🚀 Run Intervention Scan",
+        "map_title": "### 🗺️ Intervention Impact Map",
+        "help_line": "Each run swaps one head's post-W_O contribution on the shared prefix.",
     },
 }
 
@@ -73,7 +83,7 @@ def render_baseline_cards(baseline):
                 f"""
                 <div class='top5-card'>
                     {html.escape(display_tok)}<br>
-                    <span style='font-size:14px; color:#aaaaaa;'>{prob:.2%}</span>
+                    <span style='font-size:14px; color:{TEXT_MUTED};'>{prob:.2%}</span>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -82,41 +92,42 @@ def render_baseline_cards(baseline):
 
 def render_details_panel(impact_data, baseline_top5_tokens):
     st.markdown("### 📋 Detail")
-    html_content = """
+    html_content = f"""
     <style>
-    body { font-family: sans-serif; background: transparent; margin:0; padding:0; }
-    .scroll-container { height:640px; overflow-y:auto; }
-    .head-card {
-        background:#171a21;
+    body {{ font-family: sans-serif; background: transparent; margin:0; padding:0; }}
+    .scroll-container {{ height:640px; overflow-y:auto; }}
+    .head-card {{
+        background:{SURFACE_PRIMARY};
+        border:1px solid {BORDER_COLOR};
         border-radius:6px;
         padding:8px 10px;
         margin-bottom:6px;
         font-size:16px;
         line-height:1.2;
-    }
-    .header-line {
+    }}
+    .header-line {{
         display:flex;
         justify-content:space-between;
         margin-bottom:4px;
-        color: white;
-    }
-    .delta-pos { color:#00f2ff; font-weight:600; }
-    .delta-neg { color:#ff4d6d; font-weight:600; }
-    .token-tag {
+        color: {BLUE_DEEP};
+    }}
+    .delta-pos {{ color:{GREEN_ACCENT}; font-weight:600; }}
+    .delta-neg {{ color:{BLUE_DEEP}; font-weight:600; }}
+    .token-tag {{
         display: inline-flex;
         align-items: center;
         justify-content: center;
         min-width: 40px;
         padding: 4px 8px;
         font-size: 15px;
-        color: white;
+        color: {BLUE_DEEP};
         border-radius:4px;
-        background:#242833;
+        background:rgba(255, 255, 255, 0.72);
         white-space: pre;
         font-family: monospace;
-    }
-    .tag-changed { border:1px solid #ff4d6d; background:#321a1a; }
-    .tag-new { border:1px solid #00f2aa; background:#1a2e26; }
+    }}
+    .tag-changed {{ border:1px solid rgba(255, 247, 153, 0.7); background:rgba(255, 247, 153, 0.34); }}
+    .tag-new {{ border:1px solid rgba(145, 208, 108, 0.7); background:rgba(145, 208, 108, 0.22); }}
     </style>
     <div class="scroll-container">
     """
@@ -141,7 +152,7 @@ def render_details_panel(impact_data, baseline_top5_tokens):
             html_content += f'''
             <div style="display:inline-block; margin-right:6px; text-align:center;">
                 <span class="token-tag {status_class}">{safe_tok}</span><br>
-                <span style="font-size:12px; color:#aaaaaa;">{prob:.2%}</span>
+                <span style="font-size:12px; color:{TEXT_MUTED};">{prob:.2%}</span>
             </div>
             '''
         html_content += "</div>"
@@ -177,16 +188,16 @@ def render_impact_scatter(xs, ys, sizes, colors, symbols, hover_texts):
                 size=sizes,
                 color=colors,
                 symbol=symbols,
-                line=dict(width=1, color="rgba(255,255,255,0.3)"),
+                line=dict(width=1, color="rgba(64, 96, 147, 0.18)"),
             ),
             text=hover_texts,
             hoverinfo="text",
         )
     )
     fig.update_layout(
-        template="plotly_dark",
-        plot_bgcolor="#11141c",
-        paper_bgcolor="#0f1117",
+        template="simple_white",
+        plot_bgcolor=PLOT_BACKGROUND,
+        paper_bgcolor=PLOT_BACKGROUND,
         xaxis=dict(title="Head"),
         yaxis=dict(title="Layer", autorange="reversed"),
         height=700,
@@ -369,7 +380,7 @@ What is the capital of Japan? Answer:""",
                     aggregate[key]["changed_count"] += 1 if top1_changed else 0
                     pair_xs.append(head)
                     pair_ys.append(layer)
-                    pair_colors.append("#ff4d6d" if delta < 0 else "#00f2ff")
+                    pair_colors.append(BLUE_DEEP if delta < 0 else GREEN_ACCENT)
                     pair_sizes.append(8 + abs(delta) * 450)
                     pair_symbols.append("diamond" if top1_changed else "circle")
                     pair_hover_texts.append(
@@ -428,7 +439,7 @@ What is the capital of Japan? Answer:""",
                 changed_rate = stats["changed_count"] / pair_count
                 xs.append(head)
                 ys.append(layer)
-                colors.append("#ff4d6d" if avg_delta < 0 else "#00f2ff")
+                colors.append(BLUE_DEEP if avg_delta < 0 else GREEN_ACCENT)
                 sizes.append(8 + abs(avg_delta) * 450)
                 symbols.append("diamond" if changed_rate >= 0.5 else "circle")
                 hover_texts.append(
@@ -455,19 +466,19 @@ What is the capital of Japan? Answer:""",
             st.markdown(
                 f"""
 <div style="
-background:#151821;
-border:1px solid #2f3542;
+background:rgba(255, 255, 255, 0.82);
+border:1px solid {BORDER_COLOR};
 border-radius:10px;
 padding:14px 18px;
 font-size:15px;
-color:#e6e6e6;
+color:{BLUE_DEEP};
 margin-bottom:12px;
 line-height:1.5;
 ">
 <b style="font-size:18px;">Info</b><br><br>
 - Each dot represents one (layer, head)<br>
 - Dot size = |Average Δ probability| on each pair's baseline top-1 token<br>
-- Blue = average probability increase, Red = average probability decrease<br>
+- Green = average probability increase, Deep blue = average probability decrease<br>
 - Diamond = top-1 changed in at least 50% of pairs<br>
 - {meta["help_line"]}
 </div>
@@ -585,7 +596,7 @@ line-height:1.5;
 
             xs.append(head)
             ys.append(layer)
-            colors.append("#ff4d6d" if delta < 0 else "#00f2ff")
+            colors.append(BLUE_DEEP if delta < 0 else GREEN_ACCENT)
             sizes.append(8 + abs(delta) * 450)
             symbols.append("diamond" if top1_changed else "circle")
             hover_texts.append(f"L{layer} H{head}<br>Δ Prob: {delta:.4f}<br>Changed: {top1_changed}")
@@ -618,16 +629,16 @@ line-height:1.5;
                     size=sizes,
                     color=colors,
                     symbol=symbols,
-                    line=dict(width=1, color="rgba(255,255,255,0.3)"),
+                    line=dict(width=1, color="rgba(64, 96, 147, 0.18)"),
                 ),
                 text=hover_texts,
                 hoverinfo="text",
             )
         )
         fig.update_layout(
-            template="plotly_dark",
-            plot_bgcolor="#11141c",
-            paper_bgcolor="#0f1117",
+            template="simple_white",
+            plot_bgcolor=PLOT_BACKGROUND,
+            paper_bgcolor=PLOT_BACKGROUND,
             xaxis=dict(title="Head"),
             yaxis=dict(title="Layer", autorange="reversed"),
             height=700,
@@ -640,19 +651,19 @@ line-height:1.5;
     st.markdown(
         f"""
 <div style="
-background:#151821;
-border:1px solid #2f3542;
+background:rgba(255, 255, 255, 0.82);
+border:1px solid {BORDER_COLOR};
 border-radius:10px;
 padding:14px 18px;
 font-size:15px;
-color:#e6e6e6;
+color:{BLUE_DEEP};
 margin-bottom:12px;
 line-height:1.5;
 ">
 <b style="font-size:18px;">Info</b><br><br>
 - Each dot represents one (layer, head)<br>
 - Dot size = |Δ probability| on baseline top-1 token<br>
-- Blue = probability increase, Red = probability decrease<br>
+- Green = probability increase, Deep blue = probability decrease<br>
 - {meta["help_line"]}
 </div>
 """,

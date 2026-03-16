@@ -1,17 +1,17 @@
 import json
-from pathlib import Path
 
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 import torch
 
+from modules.common_app import PROMPT_LIBRARY_FILE, build_page_title
 from modules.common_inference import encode_prompt, forward_last_token, summarize_prediction
 from modules.common_model import get_device, get_selected_model_name, load_model
-from modules.common_ui import apply_base_theme, render_title
+from modules.common_ui import BLUE_BRIGHT, BLUE_DEEP, GREEN_ACCENT, PLOT_BACKGROUND, YELLOW_ACCENT, apply_base_theme, render_title
 
 
-PROMPT_REPO_FILE = Path("/home/head-bang-bang/saved_prompts/prompt_library.json")
+PROMPT_REPO_FILE = PROMPT_LIBRARY_FILE
 
 
 def _head_id(layer_idx: int, head_idx: int) -> str:
@@ -110,22 +110,29 @@ def _rank_heads(results: list[dict], top_n: int) -> tuple[list[dict], go.Figure]
             marker=dict(
                 size=sizes,
                 color=colors,
-                colorscale="Turbo",
+                colorscale=[
+                    [0.0, BLUE_DEEP],
+                    [0.45, BLUE_BRIGHT],
+                    [0.75, GREEN_ACCENT],
+                    [1.0, YELLOW_ACCENT],
+                ],
                 showscale=True,
                 colorbar=dict(title="Layer"),
                 opacity=0.85,
-                line=dict(width=0.5, color="rgba(255,255,255,0.35)"),
+                line=dict(width=0.5, color="rgba(64, 96, 147, 0.2)"),
             ),
             hovertext=hover,
             hoverinfo="text",
         )
     )
     fig.update_layout(
-        template="plotly_dark",
+        template="simple_white",
         title="Intervention Break Map",
         xaxis_title="Degrade Rate",
         yaxis_title="Std Delta",
         height=520,
+        plot_bgcolor=PLOT_BACKGROUND,
+        paper_bgcolor=PLOT_BACKGROUND,
         margin=dict(l=16, r=16, t=56, b=16),
     )
     return top_rows, fig
@@ -142,7 +149,7 @@ def _load_prompt_sets() -> list[dict]:
     return [item for item in sets if isinstance(item, dict) and item.get("name") and isinstance(item.get("prompts"), list)]
 
 
-st.set_page_config(page_title="Stable Head Mining", layout="wide")
+st.set_page_config(page_title=build_page_title("Stable Head Mining"), layout="wide")
 apply_base_theme()
 render_title("⛏️ Stable Head Mining")
 
@@ -163,7 +170,7 @@ selected_set_prompts: list[str] = []
 
 if input_mode == "저장소 세트 선택":
     if not prompt_sets:
-        st.warning("저장소 세트가 없습니다. Prompt Repository 페이지에서 먼저 세트를 저장하세요.")
+        st.warning("저장소 세트가 없습니다. Prompt Sets 페이지에서 먼저 세트를 저장하세요.")
     else:
         names = [item["name"] for item in prompt_sets]
         selected_name = st.selectbox("세트 선택", options=names)

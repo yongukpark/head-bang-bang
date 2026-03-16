@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from pathlib import Path
 
 import streamlit as st
 
+from modules.common_app import PROMPT_LIBRARY_FILE, SAVED_PROMPTS_DIR, build_page_title
 from modules.common_ui import apply_base_theme, render_title
 
 
-SAVE_DIR = Path("/home/head-bang-bang/saved_prompts")
-SAVE_FILE = SAVE_DIR / "prompt_library.json"
+SAVE_DIR = SAVED_PROMPTS_DIR
+SAVE_FILE = PROMPT_LIBRARY_FILE
 
 
 def _now_utc_iso() -> str:
@@ -71,9 +71,9 @@ def _load_set_into_editor(name: str, description: str, prompts: list[str]) -> No
     st.session_state["repo_edit_prompts"] = "\n".join(prompts)
 
 
-st.set_page_config(page_title="Prompt Repository", layout="wide")
+st.set_page_config(page_title=build_page_title("Prompt Sets"), layout="wide")
 apply_base_theme()
-render_title("🗂️ Prompt Repository")
+render_title("🗂️ Prompt Sets")
 
 repo = _load_repo()
 all_sets = repo["sets"]

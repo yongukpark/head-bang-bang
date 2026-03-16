@@ -6,9 +6,22 @@ import plotly.graph_objects as go
 import streamlit as st
 import torch
 
+from modules.common_app import build_page_title
 from modules.common_inference import encode_prompt, forward_last_token, summarize_prediction
 from modules.common_model import get_device, get_selected_model_name, load_model
-from modules.common_ui import apply_base_theme, render_title, visualize_token
+from modules.common_ui import (
+    BLUE_BRIGHT,
+    BLUE_DEEP,
+    BORDER_COLOR,
+    GREEN_ACCENT,
+    PLOT_BACKGROUND,
+    SURFACE_PRIMARY,
+    TEXT_MUTED,
+    YELLOW_ACCENT,
+    apply_base_theme,
+    render_title,
+    visualize_token,
+)
 
 
 def _capture_states(model, input_ids: torch.Tensor):
@@ -190,51 +203,51 @@ def _run_lens(
 
 def _inject_css():
     st.markdown(
-        """
+        f"""
 <style>
-.arch-card {
-    background: #171b24;
-    border: 1px solid rgba(255,255,255,0.09);
+.arch-card {{
+    background: {SURFACE_PRIMARY};
+    border: 1px solid {BORDER_COLOR};
     border-radius: 10px;
     padding: 8px 10px;
     margin-bottom: 8px;
-}
-.arch-title {
+}}
+.arch-title {{
     font-size: 13px;
-    color: #e5ecff;
+    color: {BLUE_DEEP};
     font-weight: 700;
-}
-.arch-sub {
+}}
+.arch-sub {{
     font-size: 11px;
-    color: #9fb0d9;
-}
-.arch-dot-on { color: #00f2aa; font-weight: 800; }
-.arch-dot-off { color: #5d6c8e; font-weight: 800; }
-.probe-card {
-    background: #171b24;
-    border: 1px solid rgba(255,255,255,0.09);
+    color: {TEXT_MUTED};
+}}
+.arch-dot-on {{ color: {GREEN_ACCENT}; font-weight: 800; }}
+.arch-dot-off {{ color: {BLUE_DEEP}; font-weight: 800; }}
+.probe-card {{
+    background: {SURFACE_PRIMARY};
+    border: 1px solid {BORDER_COLOR};
     border-radius: 10px;
     padding: 12px;
     margin-bottom: 10px;
-}
-.probe-top1 {
+}}
+.probe-top1 {{
     font-family: monospace;
     font-size: 24px;
-    color: #f2f6ff;
-}
-.probe-sub {
-    color: #9fb0d9;
+    color: {BLUE_DEEP};
+}}
+.probe-sub {{
+    color: {TEXT_MUTED};
     font-size: 12px;
     margin-top: 4px;
-}
-.token-hit {
-    border: 1px solid #00f2aa;
-    background: #132a23;
-}
-.token-nohit {
-    border: 1px solid rgba(255,255,255,0.07);
-    background: #20242f;
-}
+}}
+.token-hit {{
+    border: 1px solid rgba(145, 208, 108, 0.7);
+    background: rgba(145, 208, 108, 0.18);
+}}
+.token-nohit {{
+    border: 1px solid {BORDER_COLOR};
+    background: rgba(255, 255, 255, 0.72);
+}}
 </style>
 """,
         unsafe_allow_html=True,
@@ -294,7 +307,7 @@ def _build_layer_arch_figure(
             arrowhead=2,
             arrowsize=1,
             arrowwidth=1.4,
-            arrowcolor="rgba(180,200,255,0.45)",
+            arrowcolor="rgba(76, 140, 228, 0.4)",
         )
 
     x_vals = []
@@ -314,13 +327,13 @@ def _build_layer_arch_figure(
         row = lens.get(probe_id)
         rank = row.get("target_rank") if row else None
         if rank is not None and use_top5 and rank <= 5:
-            node_color = "#ff3b3b"
+            node_color = GREEN_ACCENT
         elif rank is not None and use_top20 and 6 <= rank <= 20:
-            node_color = "#3f7cff"
+            node_color = BLUE_BRIGHT
         elif rank is not None and use_top100 and 21 <= rank <= 100:
-            node_color = "#00f2aa"
+            node_color = YELLOW_ACCENT
         else:
-            node_color = "#39527d"
+            node_color = BLUE_DEEP
         colors.append(node_color)
         if row is None:
             hover.append(f"{title}<br>no lens data")
@@ -377,7 +390,7 @@ def _build_layer_arch_figure(
             marker=dict(
                 size=sizes,
                 color=colors,
-                line=dict(width=1, color="rgba(255,255,255,0.35)"),
+                line=dict(width=1, color="rgba(64, 96, 147, 0.18)"),
                 symbol="square",
             ),
             customdata=customdata,
@@ -387,9 +400,9 @@ def _build_layer_arch_figure(
     )
 
     fig.update_layout(
-        template="plotly_dark",
-        plot_bgcolor="#0f1117",
-        paper_bgcolor="#0f1117",
+        template="simple_white",
+        plot_bgcolor=PLOT_BACKGROUND,
+        paper_bgcolor=PLOT_BACKGROUND,
         height=520,
         margin=dict(l=10, r=10, t=8, b=8),
         xaxis=dict(visible=False, range=[-2.8, 2.8]),
@@ -426,7 +439,7 @@ def _render_arch_node(row: dict, is_hit: bool):
     )
 
 
-st.set_page_config(page_title="Head + MLP Logit Lens", layout="wide")
+st.set_page_config(page_title=build_page_title("Architecture Lens"), layout="wide")
 apply_base_theme(top5_font_size=16)
 _inject_css()
 
@@ -439,7 +452,7 @@ model, tokenizer = load_model(selected_model_name, str(device))
 n_layers = model.config.num_hidden_layers
 n_heads = model.config.num_attention_heads
 
-render_title("🔬 Head + MLP Architecture Logit Lens")
+render_title("🔬 Architecture Lens")
 
 prompt = st.text_area("Prompt", "The capital city of France is", height=120)
 chunk_size = 64
